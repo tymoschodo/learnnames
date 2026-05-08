@@ -76,6 +76,7 @@
   .study-card{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.4);}
   .study-photo{width:100%;height:320px;object-fit:cover;object-position:top center;display:block;}
   .study-name{font-family:'Playfair Display',serif;font-size:1.6rem;font-weight:700;color:var(--cream);text-align:center;padding:20px 16px 8px;}
+  .study-pron{text-align:center;font-size:0.95rem;color:var(--gold);letter-spacing:0.05em;padding:0 16px 4px;font-style:italic;}
   .study-meta{text-align:center;font-size:0.8rem;color:var(--muted);padding:0 16px 20px;}
   .study-actions{display:flex;gap:10px;width:100%;margin-top:4px;}
   .study-btn{flex:1;border:none;padding:14px 10px;border-radius:var(--radius);font-family:inherit;font-size:0.88rem;font-weight:700;cursor:pointer;transition:all 0.15s;letter-spacing:0.04em;}
@@ -237,6 +238,7 @@ function renderStudy() {
         <img class="study-photo" src="${person.img}" alt="${person.name}">
       </div>
       <div class="study-name">${person.name}</div>
+      ${person.pron ? `<div class="study-pron">${person.pron}</div>` : ''}
       <div class="study-meta">${person.voice ? '<span style="color:var(--gold);font-weight:600">'+person.voice+'</span> · ' : ''}${isNew ? 'New card' : 'Review · seen ' + card.reps + ' time' + (card.reps===1?'':'s')}</div>
     </div>
     <div class="study-actions">
@@ -358,6 +360,20 @@ function renderBrowse(){
   html+='</div>';
   document.getElementById('app').innerHTML=html;
 }
+
+// Pronunciation guide for non-obvious names
+const PRONUNCIATION = {
+  "Mkharyiseli Mlombi": "mm-kha-ree-SEH-lee MLOM-bee",
+  "Haewon Jeong":       "HEH-wun JUNG",
+  "Xiaohui Zhang":      "SHE-ow-hway JAHNG",
+  "Kyoung-Eun Lee":     "KYUNG-un EE",
+  "Yeon Jo Choi":       "YUN-jo CHWAY",
+  "Jung Nam Yoo":       "JUNG-nahm YOO",
+  "Jae Seung Yu":       "JAY-sung YOO",
+};
+
+// Inject pronunciations into PEOPLE
+PEOPLE.forEach(p => { if (PRONUNCIATION[p.name]) p.pron = PRONUNCIATION[p.name]; });
 
 // Start
 setMode('photo2name');
