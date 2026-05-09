@@ -149,6 +149,46 @@
   .study-complete h2{font-family:"Playfair Display",serif;font-size:1.8rem;color:var(--gold2);margin-bottom:8px;}
   .study-complete p{color:var(--muted);margin-bottom:8px;line-height:1.6;}
   .crash-mode-banner{background:rgba(192,57,43,0.15);border:1px solid rgba(192,57,43,0.4);border-radius:var(--radius);padding:8px 14px;text-align:center;font-size:0.78rem;color:#f08080;margin-bottom:4px;}
+
+  .study-stats-row{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-bottom:4px;}
+  .stat-pill{font-size:0.72rem;padding:3px 10px;border-radius:20px;font-weight:600;}
+  .stat-new{background:rgba(41,128,185,0.2);color:#80c0f0;border:1px solid rgba(41,128,185,0.4);}
+  .stat-learning{background:rgba(230,126,34,0.2);color:#f0a060;border:1px solid rgba(230,126,34,0.4);}
+  .stat-due{background:rgba(192,57,43,0.2);color:#f08080;border:1px solid rgba(192,57,43,0.4);}
+  .stat-mastered{background:rgba(39,174,96,0.2);color:#6ee89b;border:1px solid rgba(39,174,96,0.4);}
+  /* Study card */
+  .study-card{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.4);}
+  .study-photo{width:100%;height:420px;object-fit:cover;object-position:top center;display:block;}
+  .study-name{font-family:"Playfair Display",serif;font-size:1.6rem;font-weight:700;color:var(--cream);text-align:center;padding:18px 16px 6px;}
+  .study-pron{text-align:center;font-size:0.95rem;color:var(--gold);letter-spacing:0.05em;padding:0 16px 4px;font-style:italic;}
+  .study-meta{text-align:center;font-size:0.8rem;color:var(--muted);padding:0 16px 18px;}
+  /* Reveal overlay */
+  .reveal-overlay{width:100%;height:420px;background:var(--surface2);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;border-radius:0;gap:10px;}
+  .reveal-overlay img{width:100%;height:420px;object-fit:cover;object-position:top center;display:block;}
+  .reveal-tap{font-size:0.85rem;color:var(--muted);letter-spacing:0.12em;text-transform:uppercase;padding:14px;text-align:center;}
+  /* Action buttons */
+  .study-actions{display:flex;gap:10px;width:100%;margin-top:4px;}
+  .study-btn{flex:1;border:none;padding:16px 10px;border-radius:var(--radius);font-family:inherit;font-size:0.95rem;font-weight:700;cursor:pointer;transition:all 0.15s;}
+  .study-btn.forgot{background:rgba(192,57,43,0.25);color:#f08080;border:1.5px solid var(--red);}
+  .study-btn.forgot:hover{background:rgba(192,57,43,0.4);}
+  .study-btn.knew{background:rgba(39,174,96,0.2);color:#6ee89b;border:1.5px solid var(--green);}
+  .study-btn.knew:hover{background:rgba(39,174,96,0.35);}
+  .study-btn.fuzzy{background:rgba(230,126,34,0.2);color:#f0a060;border:1.5px solid #e67e22;}
+  .study-btn.fuzzy:hover{background:rgba(230,126,34,0.35);}
+  /* Phase label */
+  .phase-banner{text-align:center;font-size:0.78rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);padding:2px 0 6px;}
+  .phase-banner.phase-learn{color:#80c0f0;}
+  .phase-banner.phase-recall{color:var(--gold);}
+  .phase-banner.phase-review{color:#6ee89b;}
+  /* Completion */
+  .study-complete{text-align:center;padding:40px 20px;animation:fadeIn 0.4s ease;}
+  .study-complete h2{font-family:"Playfair Display",serif;font-size:1.8rem;color:var(--gold2);margin-bottom:8px;}
+  .study-complete p{color:var(--muted);margin-bottom:8px;line-height:1.6;}
+  /* Mini deck previews */
+  .deck-preview{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin:8px 0;}
+  .deck-thumb{width:48px;height:48px;border-radius:8px;object-fit:cover;object-position:top center;border:2px solid var(--border);}
+  .deck-thumb.done{border-color:var(--green);opacity:0.6;}
+  .deck-thumb.current{border-color:var(--gold);box-shadow:0 0 0 2px var(--gold);}
 </style>
 </head>
 <body>
@@ -184,33 +224,31 @@ const PRONUNCIATION={
 PEOPLE.forEach(p=>{if(PRONUNCIATION[p.name])p.pron=PRONUNCIATION[p.name];});
 
 // ── Storage ────────────────────────────────────────────────────────────────
-function saveCards(c){try{localStorage.setItem("mua_v4",JSON.stringify(c));}catch(e){}}
-function loadCards(){try{const r=localStorage.getItem("mua_v4");return r?JSON.parse(r):null;}catch(e){return null;}}
+function save(c){try{localStorage.setItem("mua_v5",JSON.stringify(c));}catch(e){}}
+function load(){try{const r=localStorage.getItem("mua_v5");return r?JSON.parse(r):null;}catch(e){return null;}}
 function initCards(){
-  const saved=loadCards(),map=saved?new Map(saved.map(c=>[c.name,c])):new Map();
-  return PEOPLE.map(p=>map.get(p.name)||{name:p.name,state:"new",step:0,interval:0,due:0,reps:0});
+  const saved=load(), map=saved?new Map(saved.map(c=>[c.name,c])):new Map();
+  return PEOPLE.map(p=>map.get(p.name)||{name:p.name,state:"new",step:0,reps:0,due:0});
 }
 
-// ── CRASH COURSE MODE ──────────────────────────────────────────────────────
-// 3 days, 65 people. No slow ramp-up. Aggressive intervals in HOURS not days.
-// Intervals: after 1st correct → 2h, 2nd → 8h, 3rd → 24h, 4th → 48h, 5th → 72h
-// New cards: unlimited per session — show ALL unlearned faces
-// Learning phase: needs 2 consecutive "Got it!" to graduate (not 3)
-// "Forgot" during review → back to step 0, show again in 5 minutes
-// "Fuzzy" → show again in 1 hour
-// "Knew it!" → next interval
-
-const INTERVALS_H = [2, 8, 24, 48, 72]; // hours after each successful rep
-
-function nextIntervalMs(reps) {
-  const h = INTERVALS_H[Math.min(reps, INTERVALS_H.length-1)];
-  return h * 3600 * 1000;
-}
+// ── Intervals (hours) ──────────────────────────────────────────────────────
+// After graduating learning phase: 2h → 8h → 24h → 48h → 72h
+const INTERVALS_H=[2,8,24,48,72];
+function nextDue(reps){ return Date.now()+INTERVALS_H[Math.min(reps,INTERVALS_H.length-1)]*3600000; }
 
 // ── Global state ───────────────────────────────────────────────────────────
 let cards=initCards(), mode="photo2name";
 let deck=[],current=0,answered=false,correct=0,wrong=0,total=0;
-let sessionQueue=[],sessionCard=null;
+
+// Study session state
+// Phase A (LEARN): show face+name, user says got it / not yet
+// Phase B (RECALL): show face only, user taps to reveal name, then confirms
+const BATCH=5;
+let batch=[];         // current batch of cards being learned
+let batchIdx=0;       // which card in batch we're on
+let studyPhase="";    // "learn" | "recall" | "review"
+let recallRevealed=false;
+let reviewQueue=[];   // due cards for review
 
 // ── Navigation ─────────────────────────────────────────────────────────────
 function setMode(m){
@@ -219,130 +257,263 @@ function setMode(m){
     document.getElementById("tab-"+id)?.classList.toggle("active",id===m);
   });
   document.getElementById("scoreBar").style.display=(m==="study"||m==="browse")?"none":"";
-  if(m==="study"){buildSession();renderStudy();}
-  else if(m==="browse")renderBrowse();
+  if(m==="study") startStudy();
+  else if(m==="browse") renderBrowse();
   else resetQuiz();
 }
 
-// ── Session: show everything that needs attention ──────────────────────────
-function buildSession(){
+// ── Study entry point ──────────────────────────────────────────────────────
+function startStudy(){
   const now=Date.now();
-  // Due reviews first, then all learning cards, then ALL new cards
-  const due     = shuffle(cards.filter(c=>c.state==="review"&&c.due<=now));
-  const learning= cards.filter(c=>c.state==="learning");
-  const fresh   = cards.filter(c=>c.state==="new");
-  // In crash mode: throw all new cards into the session
-  sessionQueue=[...due,...learning,...fresh];
-  sessionCard=null;
+  reviewQueue=shuffle(cards.filter(c=>c.state==="review"&&c.due<=now));
+  const newCards=cards.filter(c=>c.state==="new"||c.state==="learning");
+
+  if(reviewQueue.length>0){
+    // Do reviews first
+    studyPhase="review";
+    renderStudy();
+  } else if(newCards.length>0){
+    // Start a new batch
+    batch=newCards.slice(0,BATCH);
+    batchIdx=0;
+    studyPhase="learn";
+    renderStudy();
+  } else {
+    renderAllDone();
+  }
 }
 
+// ── Main study renderer ────────────────────────────────────────────────────
 function renderStudy(){
-  const app=document.getElementById("app"),now=Date.now();
-  const nNew =cards.filter(c=>c.state==="new").length;
-  const nDue =cards.filter(c=>c.state==="review"&&c.due<=now).length;
-  const nLrn =cards.filter(c=>c.state==="learning").length;
-  const nMst =cards.filter(c=>c.state==="review"&&c.reps>=1).length;
-  const total65=cards.length;
+  const app=document.getElementById("app"), now=Date.now();
+  const nNew=cards.filter(c=>c.state==="new").length;
+  const nLrn=cards.filter(c=>c.state==="learning").length;
+  const nDue=cards.filter(c=>c.state==="review"&&c.due<=now).length;
+  const nMst=cards.filter(c=>c.state==="review"&&c.reps>=1).length;
 
-  if(sessionQueue.length===0&&!sessionCard){
-    const nextDue=cards.filter(c=>c.state==="review"&&c.due>now).sort((a,b)=>a.due-b.due)[0];
-    const wm=nextDue?Math.ceil((nextDue.due-now)/60000):null;
-    const allDone=nNew===0&&nLrn===0&&nDue===0;
-    app.innerHTML=`<div class="study-complete">
-      <h2>${allDone?"All done for now!":"Session complete!"}</h2>
-      <p><strong>${nMst}</strong> of ${total65} people seen at least once.<br>
-      ${nNew} not yet started &nbsp;·&nbsp; ${nLrn} still learning &nbsp;·&nbsp; ${nDue} due now.</p>
-      ${wm?`<p style="color:var(--gold);font-weight:600">Come back in ${wm<60?wm+" min":wm<120?"1 h":Math.ceil(wm/60)+" h"} for your next review!</p>`:""}
-      <div style="display:flex;gap:10px;justify-content:center;margin-top:20px;flex-wrap:wrap">
-        <button class="restart-btn" onclick="buildSession();renderStudy()">Keep studying</button>
-        <button class="next-btn" style="padding:13px 24px" onclick="setMode('photo2name')">Test yourself →</button>
-      </div>
-      <p style="margin-top:16px"><a href="#" onclick="cards=initCards();saveCards(cards);buildSession();renderStudy();return false" style="color:var(--muted);font-size:0.8rem">Reset all progress</a></p>
-    </div>`;
+  if(studyPhase==="review") renderReviewPhase(app,nNew,nLrn,nDue,nMst);
+  else if(studyPhase==="learn") renderLearnPhase(app,nNew,nLrn,nDue,nMst);
+  else if(studyPhase==="recall") renderRecallPhase(app,nNew,nLrn,nDue,nMst);
+}
+
+function statsRow(nNew,nLrn,nDue,nMst){
+  return `<div class="study-stats-row">
+    <span class="stat-pill stat-new">${nNew} new</span>
+    <span class="stat-pill stat-learning">${nLrn} learning</span>
+    <span class="stat-pill stat-due">${nDue} due</span>
+    <span class="stat-pill stat-mastered">${nMst} seen</span>
+  </div>`;
+}
+
+// ── PHASE: REVIEW (due cards) ──────────────────────────────────────────────
+function renderReviewPhase(app,nNew,nLrn,nDue,nMst){
+  if(reviewQueue.length===0){
+    // Reviews done — now start new batch if any
+    const newCards=cards.filter(c=>c.state==="new"||c.state==="learning");
+    if(newCards.length>0){
+      batch=newCards.slice(0,BATCH);
+      batchIdx=0;studyPhase="learn";renderStudy();
+    } else { renderAllDone(); }
     return;
   }
-
-  if(!sessionCard){sessionCard=sessionQueue.shift();if(!sessionCard){renderStudy();return;}}
-
-  const person=PEOPLE.find(p=>p.name===sessionCard.name);
-  const isLearning=sessionCard.state==="new"||sessionCard.state==="learning";
-  const nextH=INTERVALS_H[Math.min(sessionCard.reps,INTERVALS_H.length-1)];
-  const phaseLabel=sessionCard.state==="new"
-    ?"New face"
-    :sessionCard.state==="learning"
-      ?`Learning — ${sessionCard.step}/2 correct in a row`
-      :`Review — seen ${sessionCard.reps}x · next in ${nextH}h`;
-
-  const queueLen=sessionQueue.length+(sessionCard?1:0);
+  const card=reviewQueue[0];
+  const person=PEOPLE.find(p=>p.name===card.name);
+  const nextH=INTERVALS_H[Math.min(card.reps,INTERVALS_H.length-1)];
 
   app.innerHTML=`<div class="card-wrap">
-    <div class="crash-mode-banner">⚡ Crash course mode — 3 days to learn all ${total65} people</div>
-    <div class="study-stats-row">
-      <span class="stat-pill stat-new">${nNew} new</span>
-      <span class="stat-pill stat-learning">${nLrn} learning</span>
-      <span class="stat-pill stat-due">${nDue} due</span>
-      <span class="stat-pill stat-mastered">${nMst} seen</span>
+    ${statsRow(nNew,nLrn,nDue,nMst)}
+    <div class="phase-banner phase-review">Review (${reviewQueue.length} left)</div>
+    <div class="study-card">
+      <img class="study-photo" src="${person.img}" alt="?">
+      <div class="reveal-tap" onclick="revealReview()" id="revealHint" style="${recallRevealed?"display:none":""}">
+        Tap to reveal name
+      </div>
+      <div id="revealContent" style="${recallRevealed?"":"display:none"}">
+        <div class="study-name">${person.name}</div>
+        ${person.pron?`<div class="study-pron">${person.pron}</div>`:""}
+        <div class="study-meta">${person.voice?`<span style="color:var(--gold);font-weight:600">${person.voice}</span>`:""}${" · seen "+card.reps+"x"}</div>
+      </div>
+    </div>
+    ${recallRevealed
+      ?`<div class="study-actions">
+          <button class="study-btn forgot" onclick="rateReview('forgot')">Forgot</button>
+          <button class="study-btn fuzzy" onclick="rateReview('fuzzy')">Fuzzy</button>
+          <button class="study-btn knew" onclick="rateReview('knew')">Knew it!</button>
+        </div>
+        <div class="hint-text">Forgot → 5 min &nbsp;·&nbsp; Fuzzy → 1 hour &nbsp;·&nbsp; Knew it! → ${nextH}h</div>`
+      :`<div class="hint-text">Try to recall the name before tapping</div>`}
+  </div>`;
+}
+
+function revealReview(){
+  recallRevealed=true;
+  // Just re-render review phase with revealed=true
+  const now=Date.now();
+  const nNew=cards.filter(c=>c.state==="new").length;
+  const nLrn=cards.filter(c=>c.state==="learning").length;
+  const nDue=cards.filter(c=>c.state==="review"&&c.due<=now).length;
+  const nMst=cards.filter(c=>c.state==="review"&&c.reps>=1).length;
+  renderReviewPhase(document.getElementById("app"),nNew,nLrn,nDue,nMst);
+}
+
+function rateReview(rating){
+  const card=reviewQueue.shift();
+  recallRevealed=false;
+  if(rating==="forgot"){
+    card.state="learning";card.step=0;
+    card.due=Date.now()+5*60*1000;
+    reviewQueue.push(card); // show again at end of review queue
+  } else if(rating==="fuzzy"){
+    card.reps=Math.max(0,card.reps);
+    card.due=Date.now()+3600000; // 1h
+  } else {
+    card.reps=(card.reps||0)+1;
+    card.due=nextDue(card.reps);
+  }
+  save(cards);renderStudy();
+}
+
+// ── PHASE A: LEARN (show face + name) ────────────────────────────────────
+function renderLearnPhase(app,nNew,nLrn,nDue,nMst){
+  if(batchIdx>=batch.length){
+    // All cards in batch shown — move to recall phase
+    batchIdx=0;studyPhase="recall";recallRevealed=false;
+    // Shuffle batch for recall
+    batch=shuffle([...batch]);
+    renderStudy();return;
+  }
+  const card=batch[batchIdx];
+  const person=PEOPLE.find(p=>p.name===card.name);
+  const batchDone=batch.slice(0,batchIdx);
+  const batchTodo=batch.slice(batchIdx+1);
+
+  app.innerHTML=`<div class="card-wrap">
+    ${statsRow(nNew,nLrn,nDue,nMst)}
+    <div class="phase-banner phase-learn">Step 1 of 2 — Learn these ${batch.length} faces (${batchIdx+1}/${batch.length})</div>
+    <div class="deck-preview">
+      ${batch.map((c,i)=>{
+        const pp=PEOPLE.find(p=>p.name===c.name);
+        const cls=i<batchIdx?"done":i===batchIdx?"current":"";
+        return `<img class="deck-thumb ${cls}" src="${pp.img}" alt="${pp.name}" title="${pp.name}">`;
+      }).join("")}
     </div>
     <div class="study-card">
       <img class="study-photo" src="${person.img}" alt="${person.name}">
       <div class="study-name">${person.name}</div>
       ${person.pron?`<div class="study-pron">${person.pron}</div>`:""}
-      <div class="study-meta">${person.voice?`<span style="color:var(--gold);font-weight:600">${person.voice}</span> · `:""}${phaseLabel}</div>
+      <div class="study-meta">${person.voice?`<span style="color:var(--gold);font-weight:600">${person.voice}</span>`+"":" "}</div>
     </div>
-    ${isLearning
-      ?`<div class="study-actions">
-          <button class="study-btn forgot" onclick="rateLearning(false)">Not yet</button>
-          <button class="study-btn knew" onclick="rateLearning(true)">Got it!</button>
-        </div>
-        <div class="hint-text">Study the face and name — then rate yourself</div>`
-      :`<div class="study-actions">
-          <button class="study-btn forgot" onclick="rateReview('forgot')">Forgot</button>
-          <button class="study-btn fuzzy" onclick="rateReview('fuzzy')">Fuzzy</button>
-          <button class="study-btn knew" onclick="rateReview('knew')">Knew it!</button>
-        </div>
-        <div class="hint-text">Forgot → 5 min &nbsp;··· Fuzzy → 1 hour &nbsp;··· Knew it! → ${nextH}h</div>`}
+    <div class="study-actions">
+      <button class="study-btn forgot" onclick="learnNext(false)">Need more time</button>
+      <button class="study-btn knew" onclick="learnNext(true)">Got it!</button>
+    </div>
+    <div class="hint-text">Study this face and name — you'll be tested on it next</div>
   </div>`;
 }
 
-// ── Learning phase: needs 2 consecutive "Got it!" ─────────────────────────
-function rateLearning(ok){
-  const card=sessionCard;sessionCard=null;
-  if(ok){
-    card.step=(card.step||0)+1;
-    if(card.step>=2){
-      // Graduate to review: first interval = 2h
-      card.state="review";card.interval=2;card.reps=0;
-      card.due=Date.now()+nextIntervalMs(0);
-    } else {
-      card.state="learning";
-      sessionQueue.push(card); // see again at end of queue
-    }
-  } else {
+function learnNext(ok){
+  const card=batch[batchIdx];
+  if(!ok){
+    // Mark as still needs learning, move to end of batch
     card.state="learning";card.step=0;
-    sessionQueue.splice(Math.min(3,sessionQueue.length),0,card); // back in ~3 cards
+    // push to end so they see it again in learn phase
+    batch.splice(batchIdx,1);
+    batch.push(card);
+    // don't increment batchIdx
+  } else {
+    card.state="learning";card.step=1;
+    batchIdx++;
   }
-  saveCards(cards);renderStudy();
+  save(cards);renderStudy();
 }
 
-// ── Review phase ──────────────────────────────────────────────────────────
-function rateReview(rating){
-  const card=sessionCard;sessionCard=null;
-  if(rating==="forgot"){
-    // Back to learning, show again in 5 min
-    card.state="learning";card.step=0;card.reps=Math.max(0,card.reps-1);
-    card.due=Date.now()+5*60*1000;
-    sessionQueue.splice(Math.min(3,sessionQueue.length),0,card);
-  } else if(rating==="fuzzy"){
-    // 1 hour
-    card.due=Date.now()+60*60*1000;card.reps=Math.max(0,card.reps);
-    // keep in session queue if within session, else scheduled
-    sessionQueue.push(card);
-  } else {
-    // Knew it — advance interval
-    card.reps=(card.reps||0)+1;
-    card.due=Date.now()+nextIntervalMs(card.reps);
+// ── PHASE B: RECALL (show face → tap to reveal → confirm) ────────────────
+function renderRecallPhase(app,nNew,nLrn,nDue,nMst){
+  if(batchIdx>=batch.length){
+    // Batch done — graduate successful ones and start next batch
+    const stillLearning=batch.filter(c=>c.step<2);
+    const graduated=batch.filter(c=>c.step>=2);
+    graduated.forEach(c=>{c.state="review";c.reps=0;c.due=nextDue(0);});
+    // Next batch: failed ones + next new cards
+    const nextNew=cards.filter(c=>c.state==="new").slice(0,BATCH-stillLearning.length);
+    if(stillLearning.length>0||nextNew.length>0){
+      batch=[...stillLearning,...nextNew];
+      batchIdx=0;studyPhase="learn";recallRevealed=false;
+    } else if(cards.filter(c=>c.state==="new").length===0&&cards.filter(c=>c.state==="learning").length===0){
+      save(cards);renderAllDone();return;
+    } else {
+      batch=cards.filter(c=>c.state==="new"||c.state==="learning").slice(0,BATCH);
+      batchIdx=0;studyPhase="learn";recallRevealed=false;
+    }
+    save(cards);renderStudy();return;
   }
-  saveCards(cards);renderStudy();
+
+  const card=batch[batchIdx];
+  const person=PEOPLE.find(p=>p.name===card.name);
+
+  app.innerHTML=`<div class="card-wrap">
+    ${statsRow(nNew,nLrn,nDue,nMst)}
+    <div class="phase-banner phase-recall">Step 2 of 2 — Recall (${batchIdx+1}/${batch.length})</div>
+    <div class="deck-preview">
+      ${batch.map((c,i)=>{
+        const pp=PEOPLE.find(p=>p.name===c.name);
+        const cls=i<batchIdx?"done":i===batchIdx?"current":"";
+        return `<img class="deck-thumb ${cls}" src="${pp.img}" alt="${pp.name}" title="${pp.name}">`;
+      }).join("")}
+    </div>
+    <div class="study-card">
+      <img class="study-photo" src="${person.img}" alt="?">
+      ${recallRevealed
+        ?`<div class="study-name">${person.name}</div>
+           ${person.pron?`<div class="study-pron">${person.pron}</div>`:""}
+           <div class="study-meta">${person.voice?`<span style="color:var(--gold);font-weight:600">${person.voice}</span>`:""}</div>`
+        :`<div class="reveal-tap" onclick="recallReveal()">Tap to reveal name</div>`}
+    </div>
+    ${recallRevealed
+      ?`<div class="study-actions">
+          <button class="study-btn forgot" onclick="recallRate(false)">Didn't know</button>
+          <button class="study-btn knew" onclick="recallRate(true)">Knew it!</button>
+        </div>
+        <div class="hint-text">Be honest — did you actually know before tapping?</div>`
+      :`<div class="hint-text">Try to remember the name before revealing</div>`}
+  </div>`;
+}
+
+function recallReveal(){
+  recallRevealed=true;
+  const now=Date.now();
+  const nNew=cards.filter(c=>c.state==="new").length;
+  const nLrn=cards.filter(c=>c.state==="learning").length;
+  const nDue=cards.filter(c=>c.state==="review"&&c.due<=now).length;
+  const nMst=cards.filter(c=>c.state==="review"&&c.reps>=1).length;
+  renderRecallPhase(document.getElementById("app"),nNew,nLrn,nDue,nMst);
+}
+
+function recallRate(knew){
+  const card=batch[batchIdx];
+  if(knew){card.step=2;} // will graduate after batch
+  else {card.step=0;card.state="learning";}
+  recallRevealed=false;
+  batchIdx++;
+  save(cards);renderStudy();
+}
+
+// ── All done screen ────────────────────────────────────────────────────────
+function renderAllDone(){
+  const now=Date.now();
+  const nMst=cards.filter(c=>c.reps>=1).length;
+  const nextDue2=cards.filter(c=>c.due>now).sort((a,b)=>a.due-b.due)[0];
+  const wm=nextDue2?Math.ceil((nextDue2.due-now)/60000):null;
+  document.getElementById("app").innerHTML=`<div class="study-complete">
+    <h2>Session complete!</h2>
+    <p><strong>${nMst}</strong> of ${cards.length} people reviewed at least once.</p>
+    ${wm?`<p style="color:var(--gold);font-weight:600">Come back in ${wm<60?wm+" min":Math.ceil(wm/60)+" h"} for your next review!</p>`:""}
+    <div style="display:flex;gap:10px;justify-content:center;margin-top:20px;flex-wrap:wrap">
+      <button class="restart-btn" onclick="startStudy()">Keep studying</button>
+      <button class="next-btn" style="padding:13px 24px" onclick="setMode('photo2name')">Test yourself →</button>
+    </div>
+    <p style="margin-top:16px"><a href="#" onclick="cards=initCards();save(cards);startStudy();return false" style="color:var(--muted);font-size:0.8rem">Reset all progress</a></p>
+  </div>`;
 }
 
 // ── Quiz ───────────────────────────────────────────────────────────────────
@@ -350,7 +521,6 @@ function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random
 function getWrong(p,n){const s=PEOPLE.filter(x=>x.name!==p.name&&x.gender===p.gender);const pool=s.length>=n?s:PEOPLE.filter(x=>x.name!==p.name);return shuffle(pool).slice(0,n);}
 function updateScore(){document.getElementById("scoreCorrect").textContent=correct;document.getElementById("scoreWrong").textContent=wrong;document.getElementById("scoreTotal").textContent=total;}
 function resetQuiz(){correct=0;wrong=0;total=0;updateScore();deck=shuffle([...PEOPLE]);current=0;answered=false;render();}
-
 function render(){
   const app=document.getElementById("app");
   if(mode==="browse"){renderBrowse();return;}
